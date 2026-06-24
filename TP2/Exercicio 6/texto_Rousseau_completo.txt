@@ -1,0 +1,10 @@
+"A natureza,
+dizem-nos,
+(Rousseau)
+Duplicar A
+Duplicar B
+Duplicar C
+Excluir C (vai sobrar)
+Duplicar A
+Duplicar B
+Duplicar C
