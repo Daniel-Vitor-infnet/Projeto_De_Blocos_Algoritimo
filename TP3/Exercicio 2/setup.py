@@ -10,4 +10,7 @@ ext_modules = [
     )
 ]
 
-setup(name="exercicio", ext_modules=cythonize(ext_modules, compiler_directives={'language_level': "3"}))
+setup(
+    name="exercicio", 
+    ext_modules=cythonize(ext_modules, compiler_directives={'language_level': "3"})
+)

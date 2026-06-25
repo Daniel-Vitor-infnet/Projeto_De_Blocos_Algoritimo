@@ -13,10 +13,6 @@ O 'prange' atua como o '#pragma omp parallel for'
   listas exatamente do mesmo tamanho.
 """
 
-# Captura o número de threads passadas via variável de ambiente
-num_threads_env = int(os.environ.get("OMP_NUM_THREADS", "4"))
-
-# Função em C puro para fazer o merge de dois blocos (GIL desligado)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef void fundir_duas_listas(long[:] src, long[:] dst, long esq, long meio, long dir) noexcept nogil:
@@ -24,7 +20,6 @@ cdef void fundir_duas_listas(long[:] src, long[:] dst, long esq, long meio, long
     cdef long j = meio
     cdef long k = esq
 
-    # Intercala os elementos da metade esquerda e direita
     while i < meio and j < dir:
         if src[i] <= src[j]:
             dst[k] = src[i]
@@ -34,7 +29,6 @@ cdef void fundir_duas_listas(long[:] src, long[:] dst, long esq, long meio, long
             j += 1
         k += 1
 
-    # Copia o que sobrou
     while i < meio:
         dst[k] = src[i]
         i += 1
@@ -48,58 +42,52 @@ cdef void fundir_duas_listas(long[:] src, long[:] dst, long esq, long meio, long
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def parallel_kway_merge(long[:] dados, long num_listas_k):
-    # Setup de variáveis tipadas pro Cython rodar rápido
     cdef long n = dados.shape[0]
     cdef long[:] buffer = np.empty(n, dtype=np.int64)
     cdef long[:] src = dados
     cdef long[:] dst = buffer
     cdef long[:] temp
     
-    # Define o tamanho de cada lista inicial
-    cdef long tamanho_bloco = n // num_listas_k
-    cdef long step = tamanho_bloco
+    cdef long step = n // num_listas_k
+    cdef long num_merges, m, esq, meio, dir, i
     
-    # Variáveis do loop C
-    cdef long num_merges, m, esq, meio, dir
-    cdef long i
+    cdef int num_threads_env = int(os.environ.get("OMP_NUM_THREADS", "4"))
+    
+    cdef bint array_trocado = False
 
-    print(f"Iniciando K-way merge com {num_threads_env} thread(s).....")
-    start_time = time.time()
+    print(f"Iniciando K-way merge com {num_threads_env} thread(s)...")
+    start_time = time.perf_counter()
 
-    # Montando a árvore de Merge (passagens)
-    # Equivalente ao: 16 listas -> 8 -> 4 -> 2 -> 1
     while step < n:
         num_merges = n // (2 * step)
         
-        # AQUI ENTRA O OPENMP!
         for m in prange(num_merges, nogil=True, num_threads=num_threads_env):
             esq = m * 2 * step
             meio = esq + step
             dir = esq + 2 * step
             
-            # Proteção caso a divisão não seja exata no final
             if dir > n:
                 dir = n
                 
             fundir_duas_listas(src, dst, esq, meio, dir)
             
-        # Trata a cauda do array (caso sobrem elementos fora dos pares)
         if (num_merges * 2 * step) < n:
             esq = num_merges * 2 * step
             for i in range(esq, n):
                 dst[i] = src[i]
 
-        # Swap: o destino desta rodada vira a origem da próxima
         temp = src
         src = dst
         dst = temp
         
+        # inverção da flag toda vez que ocorre uma troca
+        array_trocado = not array_trocado
+        
         step *= 2
 
-    end_time = time.time()
-    print(f"Tempo de execução do Merge: {end_time - start_time:.4f} segundos")
+    end_time = time.perf_counter()
+    print(f"Tempo do Merge: {end_time - start_time:.4f} segundos")
 
-    # Garante que o array final atualizado seja o original
-    if src is not dados:
+    if array_trocado:
         for i in range(n):
             dados[i] = src[i]

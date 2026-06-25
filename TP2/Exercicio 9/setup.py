@@ -3,8 +3,8 @@ from Cython.Build import cythonize
 
 ext_modules = [
     Extension(
-        "exercicio9",          # O nome do módulo que será gerado e importado
-        ["exercicio9.pyx"],    # O seu arquivo Cython
+        "exercicio9",          
+        ["exercicio9.pyx"],    
         extra_compile_args=["-fopenmp"],
         extra_link_args=["-fopenmp"],
     )

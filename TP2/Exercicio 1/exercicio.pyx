@@ -3,32 +3,35 @@ from cython.parallel import prange
 import time
 import os
 
-""" Vou usar o cython dessa forma pq foi a forma que o Tiago passou e eu gostei
-Vou usar o "prange" para paralelizar o loop e n precisar usar o "pragma" e "reduction(+:sum)"
-"""
-# Captura o número de threads passadas
-num_threads_env = int(os.environ.get("OMP_NUM_THREADS", "1"))
+def calcular_pi():
+    # Pega o valor em um objeto Python 
+    threads_py = int(os.environ.get("OMP_NUM_THREADS", "1"))
+    
+    # Converte para C
+    num_threads_env = cython.declare(cython.int, threads_py)
 
-# variáveis declaradas
-num_passos = cython.declare(cython.long, 100000000)
-passo = cython.declare(cython.double, 1.0 / num_passos)
-soma = cython.declare(cython.double, 0.0)
-x = cython.declare(cython.double, 0.0)
-i = cython.declare(cython.long, 0)
+    # variáveis declaradas em C
+    num_passos = cython.declare(cython.long, 100000000)
+    passo = cython.declare(cython.double, 1.0 / num_passos)
+    soma = cython.declare(cython.double, 0.0)
+    x = cython.declare(cython.double, 0.0)
+    i = cython.declare(cython.long, 0)
 
-print(f"Iniciando cálculo com {num_threads_env} thread(s).....")
+    print(f"Iniciando cálculo com {num_threads_env} thread(s).....")
 
-start_time = time.time()
+    start_time = time.perf_counter()
 
-# A redução da variável 'soma' e a privacidade de 'x' e 'i'
-for i in prange(num_passos, nogil=True, num_threads=num_threads_env):
-    x = (i + 0.5) * passo
-    soma += 4.0 / (1.0 + x * x)
+    for i in prange(num_passos, nogil=True, num_threads=num_threads_env):
+        x = (i + 0.5) * passo
+        soma += 4.0 / (1.0 + x * x)
 
-end_time = time.time()
+    end_time = time.perf_counter()
 
-# Cálculo final
-pi = passo * soma
+    # Cálculo final
+    pi = passo * soma
 
-print(f"Pi calculado: {pi}")
-print(f"Tempo de execução: {end_time - start_time} segundos")
+    print(f"Pi calculado: {pi}")
+    print(f"Tempo de execução: {end_time - start_time:.4f} segundos")
+
+if __name__ == "__main__":
+    calcular_pi()

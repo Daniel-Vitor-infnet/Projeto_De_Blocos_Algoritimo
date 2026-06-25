@@ -1,7 +1,0 @@
-Usei o comando:
-sudo find / -type f -not -name ".*" -printf "%f\n" 2>/dev/null | head -n 30000 > lista_arquivos.txt
-
-Eu preferi o find pra evitar pastas tb. Fiz alguns filtros bobos, mas como pede "pelo menos 10000".
-Está salvo em TP1/Arquivos/lista_arquivos.txt
-
-N tem nada magico até pq depois vai precisar organizar e etc..

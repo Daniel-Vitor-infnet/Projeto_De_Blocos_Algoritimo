@@ -1,27 +1,45 @@
 import numpy as np
 import os
+import sys
 from exercicio import parallel_kway_merge
 
-# Força o número de threads
-os.environ["OMP_NUM_THREADS"] = "8"
+def main():
+    threads = os.environ.get("OMP_NUM_THREADS", "4")
+    print(f"--- Testando com {threads} threads ---")
 
-K = 16 # Número de listas iniciais (como pede o enunciado)
-TAMANHO_POR_LISTA = 500000 
-TAMANHO_TOTAL = K * TAMANHO_POR_LISTA
+    # Arquivo na mesma pasta do script
+    caminho_txt = "lista_arquivos.txt"
+    
+    try:
+        with open(caminho_txt, 'r') as f:
+            linhas = f.read().splitlines()
+    except FileNotFoundError:
+        print(f"Arquivo '{caminho_txt}' não encontrado na pasta atual!")
+        sys.exit()
 
-print(f"Gerando dados ({TAMANHO_TOTAL} números)...")
-dados = np.random.randint(0, 1000000, size=TAMANHO_TOTAL, dtype=np.int64)
+    tamanhos_hash = [abs(hash(linha)) % 1000000 for linha in linhas]
+    dados_base = np.array(tamanhos_hash, dtype=np.int64)
+    
+    K = 16 
+    dados = np.tile(dados_base, K) 
+    
+    tamanho_por_lista = len(dados_base)
+    print(f"Massa de dados carregada: {len(dados)} números baseados no arquivo do TP1.")
 
-# Como é K-way é preciso simular que as K listas individuais já vieram ordenadas
-for i in range(K):
-    inicio = i * TAMANHO_POR_LISTA
-    fim = inicio + TAMANHO_POR_LISTA
-    dados[inicio:fim].sort()
+    for i in range(K):
+        inicio = i * tamanho_por_lista
+        fim = inicio + tamanho_por_lista
+        dados[inicio:fim].sort()
 
-print("K-listas ordenadas individualmente. Rodando o Cython...")
+    print("Sub-listas pré-ordenadas. Mandando pro Cython fazer a árvore de merge...")
+    
+    parallel_kway_merge(dados, K)
 
-parallel_kway_merge(dados, K)
+    esta_ordenado = np.all(dados[:-1] <= dados[1:])
+    if esta_ordenado:
+        print("Sucesso! O array final está perfeitamente ordenado.")
+    else:
+        print("Deu ruim na ordenação.")
 
-# Verifica a ordenação final
-esta_ordenado = np.all(dados[:-1] <= dados[1:])
-print(f"O array final está perfeitamente ordenado? {esta_ordenado}")
+if __name__ == "__main__":
+    main()
